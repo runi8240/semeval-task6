@@ -26,4 +26,5 @@ Given a question and an answer, classify the answer into one of the 9 evasion te
 
 
 Evaluation
+
 Both tasks will be evaluated using macro F1-score, ensuring balanced performance across all classes. Evaluation will be conducted on both the official test set and a held-out private evaluation set to ensure robust performance assessment.
