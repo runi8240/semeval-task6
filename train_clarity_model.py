@@ -21,12 +21,13 @@ id2clarity = {i: c for c, i in clarity2id.items()}
 evasion2id = {c: i for i, c in enumerate(evasion_labels)}
 id2evasion = {i: c for c, i in evasion2id.items()}
 
-print("Clarity labels", clarity2id)
+print("Clarity labels:", clarity2id)
 print("Evasion labels:", evasion2id)
 
 # 2. Tokenizer
 model_name = "microsoft/deberta-v3-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+
 
 def preprocess(batch):
     """Combine question + answer and tokenize."""
@@ -50,6 +51,7 @@ encoded = encoded.remove_columns(ds["train"].column_names)
 
 # Set tensor format
 encoded.set_format("torch")
+
 
 # 3. Multi-task model
 class MultiTaskDeberta(nn.Module):
@@ -77,6 +79,7 @@ class MultiTaskDeberta(nn.Module):
         
         return {"loss": loss, "logits_clarity": clarity_logits, "logits_evasion": evasion_logits}
 
+
 print("Initializing model...")
 model = MultiTaskDeberta(base_model=model_name, num_clarity=len(clarity2id), num_evasion=len(evasion2id))
 
@@ -91,6 +94,7 @@ training_args = TrainingArguments(
     logging_steps=50,
     report_to="none"
 )
+
 
 def compute_metrics(pred):
     clarity_logits = pred.predictions[0]
@@ -120,6 +124,7 @@ trainer.train()
 # 5. Save the model
 print("Saving model...")
 trainer.save_model("./clarity_model")
+
 
 # 6. Inference function
 def predict(question, answer):
