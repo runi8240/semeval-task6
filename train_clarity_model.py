@@ -65,8 +65,8 @@ class MultiTaskDeberta(nn.Module):
         self.clarity_head = nn.Linear(hidden, num_clarity)
         self.evasion_head = nn.Linear(hidden, num_evasion)
     
-    def forward(self, input_ids, attention_mask, labels_clarity=None, labels_evasion=None):
-        enc_out = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
+    def forward(self, input_ids, attention_mask, labels_clarity=None, token_type_ids=None, labels_evasion=None):
+        enc_out = self.encoder(input_ids=input_ids, attention_mask=attention_mask,token_type_ids=token_type_ids)
         cls = enc_out.last_hidden_state[:, 0, :]    # CLS token embedding
 
         clarity_logits = self.clarity_head(cls)
@@ -127,21 +127,40 @@ trainer.save_model("./clarity_model")
 
 
 # 6. Inference function
+
 def predict(question, answer):
+
+    # Always run inference on CPU to avoid MPS issues
+    device = torch.device("cpu")
+    model.to(device)
+    model.eval()
+
     question = question or ""
     answer = answer or ""
     text = question + " [SEP] " + answer
 
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    # 1) Tokenize
+    encoded = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=512,
+    )
 
+    # 2) Move inputs to the same device as the model
+    inputs = {k: v.to(device) for k, v in encoded.items()}
+
+    # 3) Forward pass
     with torch.no_grad():
         output = model(**inputs)
-    
+
+    # 4) Get predicted class IDs from your multitask heads
+    # (this assumes your forward returns a dict like:
+    #  {"loss": ..., "logits_clarity": ..., "logits_evasion": ...})
     c_id = output["logits_clarity"].argmax(dim=-1).item()
     e_id = output["logits_evasion"].argmax(dim=-1).item()
 
     return id2clarity[c_id], id2evasion[e_id]
-
 
 # Example
 print("\nExample prediction:")
